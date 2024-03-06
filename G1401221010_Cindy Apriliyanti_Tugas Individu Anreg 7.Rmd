@@ -1,0 +1,136 @@
+---
+title: "G1401221010_Cindy Apriliyanti"
+author: "Cindy Apriliyanti"
+date: "2024-03-06"
+output: html_document
+---
+#Tugas Individu Analisis Regresi Kuliah (K1)
+#Cindy Apriliyanti (G1401221010)
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(ggridges)
+library(GGally)
+library(plotly)
+library(dplyr)
+library(lmtest)
+library(stats)
+```
+
+```{r}
+#EKSPLORASI DATA
+data <- read_xlsx("C:\\Users\\Ryzen\\Documents\\Tugas Anreg Kuliah Pertemuan 7.xlsx")
+data
+```
+```{r}
+#UJI KENORMALAN
+qqnorm(data$Y)
+qqline(data$Y, col = "blue")
+```
+```{r}
+shapiro.test(data$Y)
+```
+#Hasil Shapiro-Wilk normality test menyebar normal berdasarkan hasil test yang lebih dari 0.05, namun qqplot menunjukkan asumsi bahwa data tersebut tidak menyebar normal.
+
+```{r}
+#MODEL REGRESI
+model_lm <- lm(formula = Y ~ X, data = data)
+summary(model_lm)
+```
+```{r}
+model_lm
+```
+```{r}
+#AUTOKORELASI
+acf(model_lm$residuals)
+```
+#Dalam autokorelasi pada lag 1 adalah 0.5 dan pada lag 2 adalah 0.4. Kedua nilai tersebut melebihi batas kepercayaan 95%. Hal ini menandakan bahwa autokorelasi pada lag 1 dan 2 signifikan yang kemudian mengindikasikan pelanggaran asumsi Gauss-Markov, khususnya asumsi non-autokorelasi.
+
+```{r}
+dwtest(model_lm)
+```
+#Hasil p-test dari Uji Durbin-Watson juga menunjukkan nilai kurang dari 0.05, yang memperkuat indikasi pelanggaran asumsi Gauss-Markov tersebut.
+
+```{r}
+#UJI HOMOSKEDASTISITAS
+plot(model_lm, which = 1)
+```
+#Uji ini mengindikasikan terjadinya homoskedastisitas karena ragam sisaan cenderung meningkat seiringan dengan nilai prediksi. 
+
+```{r}
+#TRANSFORMASI WLS
+resid_abs <- abs(model_lm$residuals)
+fitted_val <- model_lm$fitted.values
+fit <- lm(resid_abs ~ fitted_val, data)
+data.weights <- 1 / fit$fitted.values^2
+data.weights
+```
+```{r}
+plot(data.weights)
+```
+```{r}
+model_weighted <- lm(Y~X, data = data, weights = data.weights)
+plot(model_weighted)
+```
+```{r}
+summary(model_weighted)
+
+#WLS belum efektif karena belum memenuhi asumsi Gauss-Markov
+```
+```{r}
+#TRANSFORMASI AKAR PADA x DAN y, ATAU X DAN Y
+newdata <- data %>%
+  mutate(y = sqrt(Y)) %>%
+  mutate(x = sqrt(X))
+model_sqrtx <- lm(y ~ X, data = newdata)
+plot(x = newdata$X, y = newdata$y)
+```
+```{r}
+plot(model_sqrtx)
+```
+
+```{r}
+summary(model_sqrtx)
+```
+```{r}
+#UJI AUTOKORELASI PADA MODEL REGRESI TRANSFORMASI
+dwtest(model_sqrtx)
+```
+```{r}
+model_sqrt <- lm(y ~ x, data = newdata)
+plot(x = newdata$x, y = newdata$y)
+```
+
+```{r}
+plot(model_sqrt)
+```
+#Tes Durbin-Watson di atas membuktikan bahwa masih terdapat autokorelasi, ditandai dengan p-value yang kurang dari 0,05. Selain itu, hasil tes Durbin-Watson juga menunjukkan adanya autokorelasi positif karena nilai DW yang rendah dan p-value yang signifikan. 
+
+```{r}
+summary(model_sqrt) 
+```
+```{r}
+#UJI AUTOKORELASI MODEL REGRESI
+dwtest(model_sqrt)
+```
+#KESIMPULAN
+#Tidak ada bukti yang cukup untuk menolak hipotesis nol, yang menyatakan bahwa tidak ada autokorelasi karena nilai p yang didapat lebih besar dari 0.05.
+
+#Dari hasil transformasi tersebut, dapat disimpulkan bahwa transformasi akar Y membuat persamaan regresi menjadi lebih efektif. 
+
+#Model regresi setelah transformasi dinyatakan sebagai:
+#Y^* = 8.71245 - 0.81339X^* + e
+#Y^* = sqrt(Y)
+#X^* = sqrt(X)
+
+#Dengan melakukan transformasi balik, kita mendapatkan:
+#Y = (8.71245 - 0.81339 X^1/2)^2 + e
+
+#Interpretasi model menghasilkan: Y berkorelasi terbalik dengan akar kuadrat dari X, dengan hubungan yang bersifat kuadratik. Berarti, semakin besar nilai akar kuadrat dari X, semakin kecil rata-rata nilai Y, dengan tingkat penurunan yang semakin meningkat.
+
+#Puncak kurva menunjukkan nilai rata-rata maksimum Y untuk nilai tertentu dari X. Konstanta 8.71245 mewakili nilai Y ketika X sama dengan 0. Koefisien -0.81339 merupakan koefisien regresi untuk variabel X. Nilai negatif menunjukkan hubungan terbalik antara Y dan akar kuadrat dari X. 
+
+#Dengan demikian, semakin besar akar kuadrat dari X maka akan semakin kecil nilai Y. Pangkat dua pada koefisien regresi menunjukkan bahwa hubungan antara Y dan X bersifat kuadratik.
+
+#Ini berarti perubahan Y tidak proporsional dengan perubahan X, melainkan berubah dengan tingkat peningkatan yang semakin tinggi.
